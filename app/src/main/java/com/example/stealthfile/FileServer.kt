@@ -1,9 +1,9 @@
 package com.example.stealthfile
 
 import fi.iki.elonen.NanoHTTPD
-import fi.iki.elonen.IHTTPSession
-import fi.iki.elonen.Response
-import fi.iki.elonen.Status
+import fi.iki.elonen.NanoHTTPD.IHTTPSession
+import fi.iki.elonen.NanoHTTPD.Response
+import fi.iki.elonen.NanoHTTPD.Response.Status
 import com.google.gson.Gson
 import java.io.File
 import java.io.FileInputStream
