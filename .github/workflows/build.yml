@@ -3,9 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch: # Позволяет запускать вручную
+  workflow_dispatch:
 
 jobs:
   build:
@@ -25,25 +23,12 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build with Gradle
-      run: ./gradlew build
-
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+    - name: Clean and Build Debug APK
+      run: ./gradlew clean assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: stealth-file-transfer-debug
         path: app/build/outputs/apk/debug/app-debug.apk
-        retention-days: 30
-
-    - name: Build Release APK (optional)
-      run: ./gradlew assembleRelease
-
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: stealth-file-transfer-release
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
         retention-days: 30
