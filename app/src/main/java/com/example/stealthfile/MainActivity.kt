@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fi.iki.elonen.NanoHTTPD // <--- ВОТ ЭТОГО ИМПОРТА НЕ ХВАТАЛО
 import kotlinx.coroutines.launch
 import java.io.File
 import java.net.InetAddress
