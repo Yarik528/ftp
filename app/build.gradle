@@ -8,7 +8,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.ftp.server"
+        applicationId "com.example.stealthfile"
         minSdk 24
         targetSdk 34
         versionCode 1
@@ -42,6 +42,7 @@ dependencies {
     implementation 'androidx.compose.ui:ui-tooling-preview'
     implementation 'androidx.compose.material:material'
     
+    // Сетевые библиотеки (строго эти версии)
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'com.google.code.gson:gson:2.10.1'
