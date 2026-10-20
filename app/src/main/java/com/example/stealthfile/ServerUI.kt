@@ -13,9 +13,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ServerTab(onStart: (Int) -> Unit, onStop: () -> Unit, logs: List<String>) {
-    var port by remember { mutableStateOf("8080") }
-    var isRunning by remember { mutableStateOf(false) }
+fun ServerTab(viewModel: ServerViewModel) {
+    val isRunning by viewModel.isRunning
+    val port by viewModel.port
+    val logs = viewModel.logs
     val ip = getLocalIpAddress()
 
     Column(Modifier.padding(16.dp).fillMaxSize()) {
@@ -24,9 +25,10 @@ fun ServerTab(onStart: (Int) -> Unit, onStop: () -> Unit, logs: List<String>) {
         
         OutlinedTextField(
             value = port, 
-            onValueChange = { port = it }, 
+            onValueChange = { viewModel.updatePort(it) }, 
             label = { Text("Порт", color = Color.Gray) },
             modifier = Modifier.fillMaxWidth(),
+            enabled = !isRunning,
             colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.White, focusedBorderColor = Color.Cyan)
         )
         
@@ -35,11 +37,9 @@ fun ServerTab(onStart: (Int) -> Unit, onStop: () -> Unit, logs: List<String>) {
         Button(
             onClick = { 
                 if (!isRunning) {
-                    onStart(port.toIntOrNull() ?: 8080)
-                    isRunning = true
+                    viewModel.startServer()
                 } else {
-                    onStop()
-                    isRunning = false
+                    viewModel.stopServer()
                 }
             },
             modifier = Modifier.fillMaxWidth(),
