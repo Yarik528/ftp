@@ -10,7 +10,7 @@ import java.net.InetAddress
 import java.net.NetworkInterface
 
 @Composable
-fun AppScreen(onStartServer: (Int) -> Unit, onStopServer: () -> Unit, serverLogs: List<String>) {
+fun AppScreen(viewModel: ServerViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
     
     Column(modifier = Modifier.fillMaxSize()) {
@@ -20,7 +20,7 @@ fun AppScreen(onStartServer: (Int) -> Unit, onStopServer: () -> Unit, serverLogs
         }
 
         if (selectedTab == 0) {
-            ServerTab(onStart = onStartServer, onStop = onStopServer, logs = serverLogs)
+            ServerTab(viewModel = viewModel)
         } else {
             ClientTab()
         }
