@@ -82,7 +82,6 @@ fun ClientTab(viewModel: ClientViewModel = viewModel()) {
             }
         }
 
-        // Прогресс-бар для загрузки на сервер
         if (isUploading) {
             Spacer(Modifier.height(8.dp))
             LinearProgressIndicator(
@@ -109,7 +108,6 @@ fun ClientTab(viewModel: ClientViewModel = viewModel()) {
                                 Text(file["name"] ?: "Unknown", color = Color.White, maxLines = 1)
                                 Text("${file["size"]} • ${file["date"]}", color = Color.Gray, fontSize = 12.sp)
                                 
-                                // Прогресс-бар для текущего скачиваемого файла
                                 if (isDownloading && file["name"] == files.find { it == file }?.get("name")) {
                                     LinearProgressIndicator(
                                         progress = downloadProgress,
