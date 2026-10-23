@@ -6,12 +6,14 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.net.InetAddress
 import java.net.NetworkInterface
 
 @Composable
-fun AppScreen(viewModel: ServerViewModel) {
+fun AppScreen(serverViewModel: ServerViewModel) {
     var selectedTab by remember { mutableStateOf(0) }
+    val clientViewModel: ClientViewModel = viewModel()
     
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab, backgroundColor = Color(0xFF1E1E1E), contentColor = Color.White) {
@@ -20,9 +22,9 @@ fun AppScreen(viewModel: ServerViewModel) {
         }
 
         if (selectedTab == 0) {
-            ServerTab(viewModel = viewModel)
+            ServerTab(viewModel = serverViewModel)
         } else {
-            ClientTab()
+            ClientTab(viewModel = clientViewModel)
         }
     }
 }
