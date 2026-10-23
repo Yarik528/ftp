@@ -2,6 +2,9 @@ package com.example.stealthfile
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.MultipartBody
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
@@ -11,7 +14,7 @@ import java.util.concurrent.TimeUnit
 class NetworkClient {
     private val client = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS) // Увеличили для больших файлов
         .build()
         
     private val gson = Gson()
@@ -46,7 +49,7 @@ class NetworkClient {
             
             body.byteStream().use { input ->
                 FileOutputStream(destinationFile).use { output ->
-                    val buffer = ByteArray(4096)
+                    val buffer = ByteArray(8192)
                     var bytesRead: Int
                     var totalBytesRead: Long = 0
                     
@@ -59,5 +62,62 @@ class NetworkClient {
                 }
             }
         }
+    }
+
+    // НОВАЯ ФУНКЦИЯ: Загрузка файла на сервер
+    suspend fun uploadFile(
+        serverIp: String,
+        port: Int,
+        file: File,
+        onProgress: (Long, Long) -> Unit = { _, _ -> }
+    ): Boolean {
+        val url = "http://$serverIp:$port/upload"
+        
+        val requestBody = file.asRequestBody("application/octet-stream".toMediaTypeOrNull())
+        
+        val progressRequestBody = ProgressRequestBody(requestBody) { bytesWritten, contentLength ->
+            onProgress(bytesWritten, contentLength)
+        }
+        
+        val multipartBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("file", file.name, progressRequestBody)
+            .build()
+        
+        val request = Request.Builder()
+            .url(url)
+            .post(multipartBody)
+            .build()
+
+        return client.newCall(request).execute().use { response ->
+            response.isSuccessful
+        }
+    }
+}
+
+// Вспомогательный класс для отслеживания прогресса загрузки
+class ProgressRequestBody(
+    private val delegate: okhttp3.RequestBody,
+    private val onProgress: (Long, Long) -> Unit
+) : okhttp3.RequestBody() {
+    
+    override fun contentType() = delegate.contentType()
+    
+    override fun contentLength() = delegate.contentLength()
+    
+    override fun writeTo(sink: okio.BufferedSink) {
+        val bufferedSink = okio.Okio.buffer(object : okio.ForwardingSink(sink) {
+            private var bytesWritten = 0L
+            private val contentLength = contentLength()
+            
+            override fun write(source: okio.Buffer, byteCount: Long) {
+                super.write(source, byteCount)
+                bytesWritten += byteCount
+                onProgress(bytesWritten, contentLength)
+            }
+        })
+        
+        delegate.writeTo(bufferedSink)
+        bufferedSink.flush()
     }
 }
