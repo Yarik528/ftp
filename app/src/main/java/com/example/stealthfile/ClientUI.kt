@@ -1,5 +1,8 @@
 package com.example.stealthfile
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,44 +14,83 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import java.io.File
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
-fun ClientTab() {
-    val scope = rememberCoroutineScope()
-    var ip by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("8080") }
-    var files by remember { mutableStateOf<List<Map<String, String>>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("") }
+fun ClientTab(viewModel: ClientViewModel = viewModel()) {
+    val ip by viewModel.ip
+    val port by viewModel.port
+    val files by viewModel.files
+    val isLoading by viewModel.isLoading
+    val status by viewModel.status
+    val downloadProgress by viewModel.downloadProgress
+    val uploadProgress by viewModel.uploadProgress
+    val isDownloading by viewModel.isDownloading
+    val isUploading by viewModel.isUploading
+    
     val context = LocalContext.current
-    val client = NetworkClient()
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            viewModel.uploadFile(it, context)
+        }
+    }
 
     Column(Modifier.padding(16.dp).fillMaxSize()) {
         Text("Подключение к серверу", style = MaterialTheme.typography.h5, color = Color.White)
         Spacer(Modifier.height(16.dp))
         
-        OutlinedTextField(value = ip, onValueChange = { ip = it }, label = { Text("IP Адрес", color = Color.Gray) }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.White))
-        OutlinedTextField(value = port, onValueChange = { port = it }, label = { Text("Порт", color = Color.Gray) }, modifier = Modifier.fillMaxWidth(), colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.White))
+        OutlinedTextField(
+            value = ip, 
+            onValueChange = { viewModel.updateIp(it) }, 
+            label = { Text("IP Адрес", color = Color.Gray) }, 
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isDownloading && !isUploading,
+            colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.White)
+        )
+        OutlinedTextField(
+            value = port, 
+            onValueChange = { viewModel.updatePort(it) }, 
+            label = { Text("Порт", color = Color.Gray) }, 
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isDownloading && !isUploading,
+            colors = TextFieldDefaults.outlinedTextFieldColors(textColor = Color.White)
+        )
         
         Spacer(Modifier.height(8.dp))
         
-        Button(onClick = {
-            scope.launch {
-                isLoading = true
-                status = "Подключение..."
-                try {
-                    files = client.getFiles(ip, port.toIntOrNull() ?: 8080)
-                    status = "Найдено файлов: ${files.size}"
-                } catch (e: Exception) {
-                    status = "Ошибка: ${e.message}"
-                } finally {
-                    isLoading = false
-                }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { viewModel.connect() },
+                enabled = !isLoading && !isDownloading && !isUploading,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(if (isLoading) "Загрузка..." else "Подключиться", color = Color.Black)
             }
-        }, enabled = !isLoading, modifier = Modifier.fillMaxWidth()) {
-            Text(if (isLoading) "Загрузка..." else "Подключиться", color = Color.Black)
+            
+            Button(
+                onClick = { 
+                    filePickerLauncher.launch(arrayOf("*/*"))
+                },
+                enabled = !isUploading && !isDownloading && ip.isNotEmpty(),
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF2196F3))
+            ) {
+                Text(if (isUploading) "Загрузка..." else "📤 Загрузить", color = Color.White)
+            }
+        }
+
+        // Прогресс-бар для загрузки на сервер
+        if (isUploading) {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = uploadProgress,
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF2196F3)
+            )
+            Text("${(uploadProgress * 100).toInt()}%", color = Color.White, fontSize = 12.sp)
         }
 
         Spacer(Modifier.height(8.dp))
@@ -66,19 +108,27 @@ fun ClientTab() {
                             Column(Modifier.weight(1f)) {
                                 Text(file["name"] ?: "Unknown", color = Color.White, maxLines = 1)
                                 Text("${file["size"]} • ${file["date"]}", color = Color.Gray, fontSize = 12.sp)
-                            }
-                            Button(onClick = {
-                                scope.launch {
-                                    try {
-                                        val dest = File(context.getExternalFilesDir(null), file["name"])
-                                        status = "Скачивание ${file["name"]}..."
-                                        client.downloadFile(ip, port.toIntOrNull() ?: 8080, file["path"]!!, dest)
-                                        status = "✅ Сохранено: ${dest.absolutePath}"
-                                    } catch (e: Exception) {
-                                        status = "❌ Ошибка: ${e.message}"
-                                    }
+                                
+                                // Прогресс-бар для текущего скачиваемого файла
+                                if (isDownloading && file["name"] == files.find { it == file }?.get("name")) {
+                                    LinearProgressIndicator(
+                                        progress = downloadProgress,
+                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                        color = Color.Cyan
+                                    )
+                                    Text("${(downloadProgress * 100).toInt()}%", color = Color.Cyan, fontSize = 10.sp)
                                 }
-                            }) {
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.downloadFile(
+                                        file["name"] ?: "",
+                                        file["path"] ?: "",
+                                        context
+                                    )
+                                },
+                                enabled = !isDownloading && !isUploading
+                            ) {
                                 Text("⬇️", color = Color.Black)
                             }
                         }
