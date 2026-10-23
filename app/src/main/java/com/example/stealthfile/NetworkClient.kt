@@ -7,6 +7,8 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.MultipartBody
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import okio.buffer
+import okio.sink
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
@@ -14,7 +16,7 @@ import java.util.concurrent.TimeUnit
 class NetworkClient {
     private val client = OkHttpClient.Builder()
         .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS) // Увеличили для больших файлов
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
         
     private val gson = Gson()
@@ -64,7 +66,6 @@ class NetworkClient {
         }
     }
 
-    // НОВАЯ ФУНКЦИЯ: Загрузка файла на сервер
     suspend fun uploadFile(
         serverIp: String,
         port: Int,
@@ -95,7 +96,6 @@ class NetworkClient {
     }
 }
 
-// Вспомогательный класс для отслеживания прогресса загрузки
 class ProgressRequestBody(
     private val delegate: okhttp3.RequestBody,
     private val onProgress: (Long, Long) -> Unit
@@ -106,7 +106,8 @@ class ProgressRequestBody(
     override fun contentLength() = delegate.contentLength()
     
     override fun writeTo(sink: okio.BufferedSink) {
-        val bufferedSink = okio.Okio.buffer(object : okio.ForwardingSink(sink) {
+        val bufferedSink = sink.buffer()
+        val countingSink = object : okio.ForwardingSink(bufferedSink) {
             private var bytesWritten = 0L
             private val contentLength = contentLength()
             
@@ -115,9 +116,10 @@ class ProgressRequestBody(
                 bytesWritten += byteCount
                 onProgress(bytesWritten, contentLength)
             }
-        })
+        }
         
-        delegate.writeTo(bufferedSink)
-        bufferedSink.flush()
+        val bufferedCountingSink = countingSink.buffer()
+        delegate.writeTo(bufferedCountingSink)
+        bufferedCountingSink.flush()
     }
 }
