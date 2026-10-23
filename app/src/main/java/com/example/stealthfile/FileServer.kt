@@ -7,6 +7,7 @@ import fi.iki.elonen.NanoHTTPD.Response.Status
 import com.google.gson.Gson
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -41,6 +42,9 @@ class FileServer(private val port: Int) : NanoHTTPD(port) {
                         newFixedLengthResponse(Status.FORBIDDEN, "text/plain", "Access Denied or File Not Found")
                     }
                 }
+                uri == "/upload" && session.method == Method.POST -> {
+                    handleUpload(session)
+                }
                 else -> {
                     newFixedLengthResponse(Status.NOT_FOUND, "text/plain", "404 Not Found")
                 }
@@ -48,6 +52,36 @@ class FileServer(private val port: Int) : NanoHTTPD(port) {
         } catch (e: Exception) {
             addLog("Ошибка: ${e.message}")
             newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "Server Error: ${e.message}")
+        }
+    }
+
+    private fun handleUpload(session: IHTTPSession): Response {
+        try {
+            val files = HashMap<String, String>()
+            session.parseBody(files)
+            
+            val params = session.parms
+            val fileParam = params["file"]
+            
+            if (fileParam != null) {
+                // Временный файл создан NanoHTTPD
+                val tempFile = File(files["file"] ?: return newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "No file"))
+                
+                if (tempFile.exists()) {
+                    // Копируем в папку Download
+                    val destFile = File(rootDir, fileParam)
+                    tempFile.copyTo(destFile, overwrite = true)
+                    tempFile.delete()
+                    
+                    addLog("✅ Файл загружен: $fileParam")
+                    return newFixedLengthResponse(Status.OK, "text/plain", "Upload successful")
+                }
+            }
+            
+            return newFixedLengthResponse(Status.BAD_REQUEST, "text/plain", "Invalid upload")
+        } catch (e: Exception) {
+            addLog("❌ Ошибка загрузки: ${e.message}")
+            return newFixedLengthResponse(Status.INTERNAL_ERROR, "text/plain", "Upload failed: ${e.message}")
         }
     }
 
