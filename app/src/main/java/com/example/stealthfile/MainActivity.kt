@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme(colors = darkColors()) {
                 Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFF121212)) {
-                    AppScreen(viewModel = viewModel)
+                    AppScreen(serverViewModel = viewModel)
                 }
             }
         }
